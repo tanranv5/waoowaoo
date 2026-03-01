@@ -39,15 +39,13 @@ An AI-powered tool for creating short drama / comic videos — automatically gen
 ```bash
 git clone https://github.com/<your-github-id>/waoowaoo.git
 cd waoowaoo
-cp .env.example .env
-echo 'APP_IMAGE=ghcr.io/<your-github-id>/waoowaoo:latest' >> .env
 docker compose pull
 docker compose up -d
 ```
 
 访问 [http://localhost:13000](http://localhost:13000) 开始使用！
 
-> 首次启动会自动完成数据库初始化，无需任何额外配置。
+> 首次启动会自动完成数据库初始化，并在容器内自动启动 MySQL + Redis，无需单独启动服务或配置数据库/Redis环境变量。
 
 > ⚠️ **如果遇到网页卡顿**：HTTP 模式下浏览器可能限制并发连接。可安装 [Caddy](https://caddyserver.com/docs/install) 启用 HTTPS：
 > ```bash
@@ -63,7 +61,7 @@ docker compose pull
 docker compose down && docker compose up -d
 ```
 
-> Fork 仓库内置 `Auto Sync Upstream And Build Docker` 工作流：
+> Fork 仓库内置 `Sync and Build` 工作流：
 > - 每 6 小时自动同步 `waoowaooAI/waoowaoo` 的 `main`
 > - 同步后自动构建并推送 `ghcr.io/<your-github-id>/waoowaoo:latest`
 > - 支持在 Actions 页面手动触发
@@ -77,15 +75,13 @@ docker compose down && docker compose up -d
 ```bash
 git clone https://github.com/<your-github-id>/waoowaoo.git
 cd waoowaoo
-cp .env.example .env
-echo 'APP_IMAGE=ghcr.io/<your-github-id>/waoowaoo:latest' >> .env
 docker compose pull
 docker compose up -d
 ```
 
 Visit [http://localhost:13000](http://localhost:13000) to get started!
 
-> The database is initialized automatically on first launch — no extra configuration needed.
+> On first launch, the app initializes the database and starts built-in MySQL + Redis inside the same container. No separate DB/Redis startup or env setup is required.
 
 > ⚠️ **If you experience lag**: HTTP mode may limit browser connections. Install [Caddy](https://caddyserver.com/docs/install) for HTTPS:
 > ```bash
@@ -101,7 +97,7 @@ docker compose pull
 docker compose down && docker compose up -d
 ```
 
-> The fork ships with `Auto Sync Upstream And Build Docker` workflow:
+> The fork ships with `Sync and Build` workflow:
 > - Syncs `main` from `waoowaooAI/waoowaoo` every 6 hours
 > - Builds and pushes `ghcr.io/<your-github-id>/waoowaoo:latest` after sync
 > - Supports manual trigger from GitHub Actions
