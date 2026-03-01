@@ -47,11 +47,8 @@ jobs:
           git fetch upstream main
           UPSTREAM_SHA="$(git rev-parse upstream/main)"
           MERGE_BASE_SHA="$(git merge-base HEAD upstream/main)"
-          echo "upstream_sha=${UPSTREAM_SHA}"
-          echo "merge_base_sha=${MERGE_BASE_SHA}"
           if [ "${UPSTREAM_SHA}" = "${MERGE_BASE_SHA}" ]; then
             echo "updated=false" >> "$GITHUB_OUTPUT"
-            echo "No upstream updates."
             exit 0
           fi
           git merge --no-edit upstream/main
@@ -104,13 +101,41 @@ jobs:
           set -euo pipefail
           IMAGE="ghcr.io/${IMAGE_NAME}:git-${GITHUB_SHA}"
           docker pull "${IMAGE}"
-          CID="$(docker run -d "${IMAGE}")"
-          cleanup() {
+          CID="$(docker run -d -e APP_START_MODE=services_only "${IMAGE}")"
+          finish() {
+            if ! docker ps -q --no-trunc | grep -q "${CID}"; then
+              echo "Container exited unexpectedly."
+              docker logs "${CID}" || true
+            fi
             docker rm -f "${CID}" >/dev/null 2>&1 || true
           }
-          trap cleanup EXIT
-          docker exec "${CID}" sh -lc 'command -v mysqld'
+          trap finish EXIT
+
+          docker exec "${CID}" sh -lc 'command -v mariadbd'
           docker exec "${CID}" sh -lc 'command -v redis-server'
           docker exec "${CID}" sh -lc 'test -x /app/scripts/docker/start-all-in-one.sh'
-          docker exec "${CID}" sh -lc 'for i in $(seq 1 30); do redis-cli -h 127.0.0.1 ping | grep PONG && exit 0; sleep 2; done; exit 1'
-          docker exec "${CID}" sh -lc 'for i in $(seq 1 30); do mysqladmin ping -h 127.0.0.1 -u"${MYSQL_USER:-waoowaoo}" -p"${MYSQL_PASSWORD:-waoowaoo123}" && exit 0; sleep 2; done; exit 1'
+
+          for i in $(seq 1 45); do
+            if docker exec "${CID}" sh -lc 'redis-cli -h 127.0.0.1 -p 6379 ping | grep PONG'; then
+              break
+            fi
+            if ! docker ps -q --no-trunc | grep -q "${CID}"; then
+              docker logs "${CID}"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          for i in $(seq 1 45); do
+            if docker exec "${CID}" sh -lc 'mysqladmin ping -h 127.0.0.1 -u"${MYSQL_USER:-waoowaoo}" -p"${MYSQL_PASSWORD:-waoowaoo123}"'; then
+              exit 0
+            fi
+            if ! docker ps -q --no-trunc | grep -q "${CID}"; then
+              docker logs "${CID}"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker logs "${CID}"
+          exit 1
