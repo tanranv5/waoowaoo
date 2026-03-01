@@ -41,7 +41,8 @@ services:
 
   # ==================== App (Next.js + Workers) ====================
   app:
-    build: .
+    image: ${APP_IMAGE:-ghcr.io/tanranv5/waoowaoo:latest}
+    pull_policy: always
     container_name: waoowaoo-app
     restart: unless-stopped
     environment:
