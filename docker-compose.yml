@@ -1,59 +1,11 @@
 services:
-  # ==================== MySQL ====================
-  mysql:
-    image: mysql:8.0
-    container_name: waoowaoo-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: waoowaoo123
-      MYSQL_DATABASE: waoowaoo
-      MYSQL_ROOT_HOST: "%"
-    ports:
-      - "13306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    command:
-      - "--default-authentication-plugin=mysql_native_password"
-      - "--sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION"
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -pwaoowaoo123"]
-      interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 15s
-
-  # ==================== Redis ====================
-  redis:
-    image: redis:7-alpine
-    container_name: waoowaoo-redis
-    restart: unless-stopped
-    ports:
-      - "16379:6379"
-    volumes:
-      - redis_data:/data
-    command: ["redis-server", "--appendonly", "yes"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 30
-      start_period: 5s
-
-  # ==================== App (Next.js + Workers) ====================
+  # ==================== App (Next.js + Workers + MySQL + Redis) ====================
   app:
     image: ${APP_IMAGE:-ghcr.io/tanranv5/waoowaoo:latest}
     pull_policy: always
     container_name: waoowaoo-app
     restart: unless-stopped
     environment:
-      # 数据库（指向容器内部 MySQL，用服务名 mysql 而非 localhost）
-      DATABASE_URL: "mysql://root:waoowaoo123@mysql:3306/waoowaoo"
-      # Redis（指向容器内部 Redis，用服务名 redis）
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_USERNAME: ""
-      REDIS_PASSWORD: ""
-      REDIS_TLS: ""
       # 存储：默认本地存储
       STORAGE_TYPE: local
       # 认证
@@ -94,28 +46,3 @@ services:
     volumes:
       - ./data:/app/data
       - ./docker-logs:/app/logs
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: >
-      sh -c "
-        npx prisma db push --skip-generate &&
-        (sleep 5 && echo '' &&
-        echo '╔══════════════════════════════════════════════════╗' &&
-        echo '║            waoowaoo is ready!                    ║' &&
-        echo '║                                                  ║' &&
-        echo '║  HTTP:  http://localhost:13000                    ║' &&
-        echo '║                                                  ║' &&
-        echo '║  For HTTPS, run Caddy on host:                   ║' &&
-        echo '║  caddy run --config Caddyfile                    ║' &&
-        echo '║  Then open: https://localhost:1443                ║' &&
-        echo '╚══════════════════════════════════════════════════╝' &&
-        echo '') &
-        npm run start
-      "
-
-volumes:
-  mysql_data:
-  redis_data:
