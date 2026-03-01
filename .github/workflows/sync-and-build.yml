@@ -31,14 +31,14 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
-        if: github.event_name != 'push'
+        if: github.event_name == 'schedule'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Sync from upstream
         id: sync
-        if: github.event_name != 'push'
+        if: github.event_name == 'schedule'
         run: |
           set -euo pipefail
           if ! git remote get-url upstream >/dev/null 2>&1; then
@@ -59,15 +59,15 @@ jobs:
           echo "updated=true" >> "$GITHUB_OUTPUT"
 
       - name: Skip build when no updates
-        if: github.event_name != 'push' && steps.sync.outputs.updated != 'true'
+        if: github.event_name == 'schedule' && steps.sync.outputs.updated != 'true'
         run: echo "Skip Docker build because upstream has no new commits."
 
       - name: Set up Docker Buildx
-        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.sync.outputs.updated == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
-        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.sync.outputs.updated == 'true'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -76,7 +76,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.sync.outputs.updated == 'true'
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -86,7 +86,7 @@ jobs:
             type=ref,event=branch
 
       - name: Build and push image
-        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || steps.sync.outputs.updated == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
