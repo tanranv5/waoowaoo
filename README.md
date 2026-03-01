@@ -37,8 +37,11 @@ An AI-powered tool for creating short drama / comic videos — automatically gen
 **前提条件**：安装 [Docker Desktop](https://docs.docker.com/get-docker/)
 
 ```bash
-git clone https://github.com/saturndec/waoowaoo.git
+git clone https://github.com/<your-github-id>/waoowaoo.git
 cd waoowaoo
+cp .env.example .env
+echo 'APP_IMAGE=ghcr.io/<your-github-id>/waoowaoo:latest' >> .env
+docker compose pull
 docker compose up -d
 ```
 
@@ -56,8 +59,14 @@ docker compose up -d
 
 ```bash
 git pull
-docker compose down && docker compose up -d --build
+docker compose pull
+docker compose down && docker compose up -d
 ```
+
+> Fork 仓库内置 `Auto Sync Upstream And Build Docker` 工作流：
+> - 每 6 小时自动同步 `waoowaooAI/waoowaoo` 的 `main`
+> - 同步后自动构建并推送 `ghcr.io/<your-github-id>/waoowaoo:latest`
+> - 支持在 Actions 页面手动触发
 
 ---
 
@@ -66,8 +75,11 @@ docker compose down && docker compose up -d --build
 **Prerequisites**: Install [Docker Desktop](https://docs.docker.com/get-docker/)
 
 ```bash
-git clone https://github.com/saturndec/waoowaoo.git
+git clone https://github.com/<your-github-id>/waoowaoo.git
 cd waoowaoo
+cp .env.example .env
+echo 'APP_IMAGE=ghcr.io/<your-github-id>/waoowaoo:latest' >> .env
+docker compose pull
 docker compose up -d
 ```
 
@@ -85,8 +97,14 @@ Visit [http://localhost:13000](http://localhost:13000) to get started!
 
 ```bash
 git pull
-docker compose down && docker compose up -d --build
+docker compose pull
+docker compose down && docker compose up -d
 ```
+
+> The fork ships with `Auto Sync Upstream And Build Docker` workflow:
+> - Syncs `main` from `waoowaooAI/waoowaoo` every 6 hours
+> - Builds and pushes `ghcr.io/<your-github-id>/waoowaoo:latest` after sync
+> - Supports manual trigger from GitHub Actions
 
 ---
 
