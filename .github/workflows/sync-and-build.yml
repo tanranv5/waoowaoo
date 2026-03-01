@@ -84,6 +84,7 @@ jobs:
             type=raw,value=latest
             type=sha,format=short
             type=ref,event=branch
+            type=raw,value=git-${{ github.sha }}
 
       - name: Build and push image
         if: github.event_name != 'schedule'
@@ -96,3 +97,20 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify middleware in image
+        if: github.event_name != 'schedule'
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${IMAGE_NAME}:git-${GITHUB_SHA}"
+          docker pull "${IMAGE}"
+          CID="$(docker run -d "${IMAGE}")"
+          cleanup() {
+            docker rm -f "${CID}" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker exec "${CID}" sh -lc 'command -v mysqld'
+          docker exec "${CID}" sh -lc 'command -v redis-server'
+          docker exec "${CID}" sh -lc 'test -x /app/scripts/docker/start-all-in-one.sh'
+          docker exec "${CID}" sh -lc 'for i in $(seq 1 30); do redis-cli -h 127.0.0.1 ping | grep PONG && exit 0; sleep 2; done; exit 1'
+          docker exec "${CID}" sh -lc 'for i in $(seq 1 30); do mysqladmin ping -h 127.0.0.1 -u"${MYSQL_USER:-waoowaoo}" -p"${MYSQL_PASSWORD:-waoowaoo123}" && exit 0; sleep 2; done; exit 1'
