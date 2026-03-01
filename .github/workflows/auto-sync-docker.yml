@@ -1,0 +1,98 @@
+name: Auto Sync Upstream And Build Docker
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: auto-sync-docker
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/waoowaoo
+
+jobs:
+  sync-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync from upstream
+        id: sync
+        if: github.event_name != 'push'
+        run: |
+          set -euo pipefail
+          if ! git remote get-url upstream >/dev/null 2>&1; then
+            git remote add upstream https://github.com/waoowaooAI/waoowaoo.git
+          fi
+          git fetch upstream main
+          UPSTREAM_SHA="$(git rev-parse upstream/main)"
+          MERGE_BASE_SHA="$(git merge-base HEAD upstream/main)"
+          echo "upstream_sha=${UPSTREAM_SHA}"
+          echo "merge_base_sha=${MERGE_BASE_SHA}"
+          if [ "${UPSTREAM_SHA}" = "${MERGE_BASE_SHA}" ]; then
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            echo "No upstream updates."
+            exit 0
+          fi
+          git merge --no-edit upstream/main
+          git push origin HEAD:main
+          echo "updated=true" >> "$GITHUB_OUTPUT"
+
+      - name: Skip build when no updates
+        if: github.event_name != 'push' && steps.sync.outputs.updated != 'true'
+        run: echo "Skip Docker build because upstream has no new commits."
+
+      - name: Set up Docker Buildx
+        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+            type=ref,event=branch
+
+      - name: Build and push image
+        if: github.event_name == 'push' || steps.sync.outputs.updated == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
