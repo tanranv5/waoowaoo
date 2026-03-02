@@ -39,6 +39,8 @@ COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/middleware.ts ./middleware.ts
 COPY --from=builder /app/postcss.config.mjs ./postcss.config.mjs
 
+RUN npx prisma generate
+
 RUN mkdir -p /app/data/uploads /app/data/mysql /app/data/redis /app/logs /run/mysqld \
   && chown -R mysql:mysql /app/data/mysql /run/mysqld \
   && chmod +x /app/scripts/docker/start-all-in-one.sh \
