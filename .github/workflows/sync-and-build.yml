@@ -128,7 +128,7 @@ jobs:
 
           for i in $(seq 1 45); do
             if docker exec "${CID}" sh -lc 'mysqladmin ping -h 127.0.0.1 -u"${MYSQL_USER:-waoowaoo}" -p"${MYSQL_PASSWORD:-waoowaoo123}"'; then
-              docker exec "${CID}" node -e 'const { PrismaClient } = require("@prisma/client"); const prisma = new PrismaClient(); prisma.$connect().then(() => prisma.$disconnect()).then(() => console.log("prisma-ok")).catch((error) => { console.error(error); process.exit(1); });'
+              docker exec -e DATABASE_URL="mysql://waoowaoo:waoowaoo123@127.0.0.1:3306/waoowaoo" "${CID}" node -e 'const { PrismaClient } = require("@prisma/client"); const prisma = new PrismaClient(); prisma.$connect().then(() => prisma.$disconnect()).then(() => console.log("prisma-ok")).catch((error) => { console.error(error); process.exit(1); });'
               exit 0
             fi
             if ! docker ps -q --no-trunc | grep -q "${CID}"; then
