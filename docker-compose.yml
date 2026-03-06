@@ -11,6 +11,8 @@ services:
       # 认证
       NEXTAUTH_URL: "http://localhost:3000"
       NEXTAUTH_SECRET: "waoowaoo-default-secret-2026"
+      QWEN_TTS_BASE_URL: "https://tts.19941996.xyz"
+      QWEN_VOICE_DESIGN_BASE_URL: "https://tts.19941996.xyz"
       # 内部密钥
       CRON_SECRET: "waoowaoo-docker-cron-secret"
       INTERNAL_TASK_TOKEN: "waoowaoo-docker-task-token"

@@ -1,33 +1,26 @@
-/**
- * 阿里百炼语音生成器
- * 
- * 支持：
- * - Qwen TTS
- */
-
 import { BaseAudioGenerator, AudioGenerateParams, GenerateResult } from '../base'
 import { getProviderConfig } from '@/lib/api-config'
+import { QWEN_TTS_PATH, resolveQwenConfiguredUrl } from '@/lib/qwen-api'
 
 export class QwenTTSGenerator extends BaseAudioGenerator {
     protected async doGenerate(params: AudioGenerateParams): Promise<GenerateResult> {
         const { userId, text, voice = 'default', rate = 1.0 } = params
 
         const { apiKey } = await getProviderConfig(userId, 'qwen')
-
+        const url = resolveQwenConfiguredUrl('QWEN_TTS_BASE_URL', QWEN_TTS_PATH)
         const body = {
             text,
             voice,
-            rate
+            rate,
         }
 
-        // 调用阿里百炼 TTS API
-        const response = await fetch('https://dashscope.aliyuncs.com/api/v1/audio/tts', {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Authorization': `Bearer ${apiKey}`,
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
         })
 
         if (!response.ok) {
@@ -37,14 +30,13 @@ export class QwenTTSGenerator extends BaseAudioGenerator {
 
         const data = await response.json()
         const audioUrl = data.audio_url || data.output?.audio_url
-
         if (!audioUrl) {
             throw new Error('Qwen 未返回音频 URL')
         }
 
         return {
             success: true,
-            audioUrl
+            audioUrl,
         }
     }
 }
